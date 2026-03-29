@@ -51,78 +51,39 @@ def optimal_impact(alpha: float | np.ndarray,
     return I_star
 
 
-def pnl_optimal(alpha: float, params: AFSParams, T: float, tau_grid: np.ndarray) -> float:
+def pnl_optimal(alpha: float, params: AFSParams, T: float, tau_grid=None) -> float:
     """
-    Expected P&L of the optimal policy for constant alpha.
-    Hey et al. Section 4.2, formula for U(J(c); c).
-
-    Parameters
-    ----------
-    alpha    : constant alpha signal (signal Sharpe = alpha/sigma)
-    params   : AFS model parameters (true parameters)
-    T        : trading horizon (in days)
-    tau_grid : impact decay timescale grid for integration
-
-    Returns
-    -------
-    U_opt : expected P&L of optimal policy (normalized)
+    Hey et al. Section 4.2, formule exacte pour U(J(c); c).
+    Alpha constant, tau correctement spécifié.
     """
     c = params.c
     tau = params.tau
-    sigma = params.sigma
-    V = params.V
-    lam = params.lam
+    alpha_sr = alpha  # sigma=1
 
-    g = _prefactor_g(c, tau)
-    alpha_sr = alpha / sigma  # Sharpe ratio of alpha
-
-    U_opt = (sigma * V / g ** (1/c)) * (alpha_sr ** (1 + 1/c)) * (
-        c / (1 + c)
-    ) * (T / (tau * (1 + c)) ** (1/c) + 1)
-
-    return U_opt
+    U = (alpha_sr ** (1 + 1/c)) * (c / (1 + c)) * (
+        T / (tau * (1 + c)) ** (1/c) + 1
+    )
+    return U
 
 
 def pnl_misspecified(alpha: float,
                      params_true: AFSParams,
                      c_hat: float,
                      T: float) -> float:
-    """
-    Expected P&L of the misspecified policy (wrong concavity c_hat)
-    under the true model with concavity c.
-    Hey et al. Section 4.2.
-
-    Parameters
-    ----------
-    alpha       : constant alpha signal
-    params_true : true AFS parameters
-    c_hat       : misspecified concavity parameter
-    T           : trading horizon
-
-    Returns
-    -------
-    U_misspec : expected P&L under misspecified policy
-    """
     c = params_true.c
     tau = params_true.tau
-    sigma = params_true.sigma
-    V = params_true.V
-
-    g_hat = _prefactor_g(c_hat, tau)
-    g_true = _prefactor_g(c, tau)
-    alpha_sr = alpha / sigma
+    alpha_sr = alpha
 
     term1 = (alpha_sr ** (1 + 1/c_hat)) * (
-        T / (tau * (1 + c_hat)) ** (1/c_hat) + 1
+        T / (tau * (1 + c_hat) ** (1/c_hat)) + 1
     )
 
-    term2 = (g_true / g_hat) ** (c / c_hat) * (alpha_sr ** ((1 + c) / c_hat)) * (
-        T / (tau * (1 + c_hat)) ** ((1 + c) / c_hat) + 1 / (1 + c)
+    # g(c)/g(c_hat) = 1 quand g=1
+    term2 = (alpha_sr ** ((1 + c)/c_hat)) * (
+        T / (tau * (1 + c_hat) ** ((1+c)/c_hat)) + 1/(1+c)
     )
 
-    U_misspec = (sigma * V / g_hat ** (1/c_hat)) * (term1 - term2)
-
-    return U_misspec
+    return term1 - term2
 
 
 def profit_ratio_concavity(alpha: float,
