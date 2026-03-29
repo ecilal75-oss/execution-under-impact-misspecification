@@ -124,3 +124,24 @@ def _prefactor_g(c: float, tau: float) -> float:
     # En pratique calibré depuis les données (Section 3 de Hey et al.)
     # Pour la reproduction des figures on normalise à 1
     return 1.0
+
+def profit_ratio_decay(params_true: AFSParams,
+                       tau_hat_grid: np.ndarray,
+                       theta: float,
+                       T: float) -> np.ndarray:
+    """
+    Profit ratio U(J(tau_hat); tau) / U(J(tau); tau)
+    pour alpha mean-reverting avec decay theta.
+    Hey et al. Section 4.3, formule simplifiée avec g(tau) ≈ g(tau_hat).
+    """
+    c = params_true.c
+    tau = params_true.tau
+
+    def ratio_formula(tau_hat):
+        x = (1 + tau_hat / theta) / (1 + tau / theta)
+        return (1/c) * x**(1/c) * (1 + c - x)
+
+    ratios = np.array([ratio_formula(th) for th in tau_hat_grid])
+    U_opt = ratio_formula(tau)  # = 1 par construction
+    
+    return ratios / U_opt
